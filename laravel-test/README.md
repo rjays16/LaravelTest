@@ -74,6 +74,10 @@ Open browser: `http://127.0.0.1:8000`
 php artisan test
 ```
 
+## Postman Collection
+
+Import `postman_collection.json` into Postman to test all API endpoints.
+
 ## License
 
 MIT License
