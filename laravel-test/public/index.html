@@ -681,8 +681,11 @@
             e.preventDefault();
             const title = document.getElementById('eventTitle').value;
             const description = document.getElementById('eventDescription').value;
-            const date = document.getElementById('eventDate').value;
+            const dateInput = document.getElementById('eventDate').value;
             const location = document.getElementById('eventLocation').value;
+            
+            // Convert datetime-local format to Laravel format
+            const date = dateInput ? new Date(dateInput).toISOString().slice(0, 19).replace('T', ' ') : null;
 
             try {
                 const result = await apiCall('/events', 'POST', { title, description, date, location });
