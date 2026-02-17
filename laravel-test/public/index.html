@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laravel Test Booking</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%236366f1'/><text x='50' y='65' text-anchor='middle' font-size='40' fill='white'>LT</text></svg>">
+    <style>
+        :root {
+            --primary: #6366f1;
+            --secondary: #8b5cf6;
+            --dark: #1e293b;
+            --light: #f8fafc;
+        }
+        
+        body {
+            background-color: #f5f5f5;
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .navbar {
+            background-color: #ffffff;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .card {
+            background: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-3px);
+        }
+        
+        .btn-primary {
+            background-color: var(--primary);
+            border: none;
+            padding: 10px 25px;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+        
+        .btn-primary:hover {
+            background-color: var(--secondary);
+        }
+        
+        .event-card {
+            border: none;
+        }
+        
+        .badge-vip {
+            background-color: #ffd700;
+            color: #000;
+        }
+        
+        .badge-standard {
+            background-color: #3b82f6;
+            color: #fff;
+        }
+        
+        .badge-premium {
+            background-color: #7c3aed;
+            color: #fff;
+        }
+        
+        .auth-container {
+            max-width: 450px;
+        }
+        
+        .form-control {
+            border-radius: 8px;
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+        }
+        
+        .form-control:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+        
+        .hero-section {
+            padding: 60px 0;
+            text-align: center;
+            background-color: #fff;
+            margin-bottom: 30px;
+        }
+        
+        .hero-section h1 {
+            font-size: 2rem;
+            color: var(--dark);
+        }
+        
+        .ticket-card {
+            border-left: 4px solid var(--primary);
+        }
+        
+        .status-confirmed { color: #22c55e; }
+        .status-pending { color: #f59e0b; }
+        .status-cancelled { color: #ef4444; }
+        
+        .nav-pills .nav-link {
+            border-radius: 20px;
+            padding: 8px 20px;
+            margin: 0 5px;
+            color: var(--dark);
+        }
+        
+        .nav-pills .nav-link.active {
+            background-color: var(--primary);
+        }
+        
+        .modal-content {
+            border-radius: 12px;
+            border: none;
+        }
+        
+        .modal-header {
+            border-radius: 12px 12px 0 0;
+            background-color: var(--primary);
+            color: white;
+        }
+        
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 200px;
+        }
+        
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .hidden { display: none !important; }
+        
+        .event-date {
+            color: #666;
+            font-size: 0.9rem;
+        }
+        
+        .event-location {
+            color: #666;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-light py-3">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="#">
+                <i class="fas fa-ticket-alt me-2 text-primary"></i>Laravel Test Booking
+            </a>
+            <div class="d-flex align-items-center">
+                <span id="userInfo" class="text-dark me-3"></span>
+                <button id="logoutBtn" class="btn btn-outline-dark btn-sm hidden" onclick="logout()">
+                    <i class="fas fa-sign-out-alt me-1"></i>Logout
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <div id="authSection">
+        <div class="hero-section">
+            <div class="container">
+                <h1><i class="fas fa-calendar-check me-2"></i>Event Booking</h1>
+            </div>
+        </div>
+        
+        <div class="container mb-5">
+            <div class="row justify-content-center">
+                <div class="col-md-6 col-lg-5">
+                    <div class="card auth-container p-4">
+                        <ul class="nav nav-pills justify-content-center mb-4" id="authTabs" role="tablist">
+                            <li class="nav-item">
+                                <button class="nav-link active" id="loginTab" data-bs-toggle="pill" data-bs-target="#loginForm">
+                                    <i class="fas fa-sign-in-alt me-1"></i>Login
+                                </button>
+                            </li>
+                            <li class="nav-item">
+                                <button class="nav-link" id="registerTab" data-bs-toggle="pill" data-bs-target="#registerForm">
+                                    <i class="fas fa-user-plus me-1"></i>Register
+                                </button>
+                            </li>
+                        </ul>
+                        
+                        <div class="tab-content">
+                            <div class="tab-pane fade show active" id="loginForm">
+                                <form onsubmit="login(event)">
+                                    <div class="mb-3">
+                                        <label class="form-label">Email</label>
+                                        <input type="email" class="form-control" id="loginEmail" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Password</label>
+                                        <input type="password" class="form-control" id="loginPassword" required>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary w-100">Login</button>
+                                </form>
+                            </div>
+                            
+                            <div class="tab-pane fade" id="registerForm">
+                                <form onsubmit="register(event)">
+                                    <div class="mb-3">
+                                        <label class="form-label">Name</label>
+                                        <input type="text" class="form-control" id="registerName" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Email</label>
+                                        <input type="email" class="form-control" id="registerEmail" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Password</label>
+                                        <input type="password" class="form-control" id="registerPassword" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Phone</label>
+                                        <input type="text" class="form-control" id="registerPhone">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Role</label>
+                                        <select class="form-control" id="registerRole">
+                                            <option value="customer">Customer</option>
+                                            <option value="organizer">Organizer</option>
+                                        </select>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary w-100">Register</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="mainSection" class="container py-4 hidden">
+        <ul class="nav nav-pills mb-4" id="mainTabs" role="tablist">
+            <li class="nav-item">
+                <button class="nav-link active" id="eventsTab" data-bs-toggle="pill" data-bs-target="#eventsPanel">
+                    <i class="fas fa-calendar-alt me-1"></i>Events
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" id="bookingsTab" data-bs-toggle="pill" data-bs-target="#bookingsPanel">
+                    <i class="fas fa-tickets me-1"></i>My Bookings
+                </button>
+            </li>
+            <li class="nav-item" id="createEventTab">
+                <button class="nav-link" id="createEventTabBtn" data-bs-toggle="pill" data-bs-target="#createEventPanel">
+                    <i class="fas fa-plus-circle me-1"></i>Create Event
+                </button>
+            </li>
+        </ul>
+        
+        <div class="tab-content">
+            <div class="tab-pane fade show active" id="eventsPanel">
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <input type="text" class="form-control" id="searchEvents" placeholder="Search events..." onkeyup="searchEvents()">
+                    </div>
+                </div>
+                <div class="row" id="eventsList">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="tab-pane fade" id="bookingsPanel">
+                <div class="row" id="bookingsList">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="tab-pane fade" id="createEventPanel">
+                <div class="card">
+                    <div class="card-body">
+                        <h4 class="mb-4"><i class="fas fa-plus-square me-2"></i>Create New Event</h4>
+                        <form onsubmit="createEvent(event)">
+                            <div class="mb-3">
+                                <label class="form-label">Event Title</label>
+                                <input type="text" class="form-control" id="eventTitle" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Description</label>
+                                <textarea class="form-control" id="eventDescription" rows="3"></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Date</label>
+                                <input type="datetime-local" class="form-control" id="eventDate" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Location</label>
+                                <input type="text" class="form-control" id="eventLocation" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Create Event</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="bookingModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-ticket me-2"></i>Book Tickets</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="ticketDetails"></div>
+                    <form onsubmit="bookTicket(event)">
+                        <div class="mb-3">
+                            <label class="form-label">Quantity</label>
+                            <input type="number" class="form-control" id="bookingQuantity" min="1" value="1" required>
+                        </div>
+                        <input type="hidden" id="bookingTicketId">
+                        <button type="submit" class="btn btn-primary w-100">Confirm Booking</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="paymentModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-credit-card me-2"></i>Payment</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body text-center py-4">
+                    <i class="fas fa-credit-card fa-3x text-primary mb-3"></i>
+                    <h4>Mock Payment</h4>
+                    <p class="text-muted">This is a simulated payment</p>
+                    <h3 id="paymentAmount" class="mb-4">$0.00</h3>
+                    <input type="hidden" id="paymentBookingId">
+                    <button class="btn btn-primary w-100" onclick="processPayment()">
+                        <i class="fas fa-check me-1"></i>Pay Now
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const API_URL = 'http://localhost:8000/api';
+        const SANCTUM_URL = 'http://localhost:8000';
+        let token = localStorage.getItem('token');
+        let currentUser = null;
+        let csrfToken = null;
+
+        async function getCsrfToken() {
+            try {
+                await fetch(`${SANCTUM_URL}/sanctum/csrf-cookie`, {
+                    credentials: 'include'
+                });
+                const cookies = document.cookie.split(';');
+                for (let cookie of cookies) {
+                    if (cookie.trim().startsWith('XSRF-TOKEN=')) {
+                        csrfToken = decodeURIComponent(cookie.trim().substring('XSRF-TOKEN='.length));
+                        break;
+                    }
+                }
+            } catch (e) {
+                console.error('Failed to get CSRF token:', e);
+            }
+        }
+
+        function init() {
+            if (token) {
+                showMain();
+                loadEvents();
+                loadBookings();
+            }
+        }
+
+        async function apiCall(endpoint, method = 'GET', data = null) {
+            await getCsrfToken();
+            
+            const headers = {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            };
+            
+            if (csrfToken) {
+                headers['X-XSRF-TOKEN'] = csrfToken;
+            }
+            
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+
+            const options = { method, headers, credentials: 'include' };
+            if (data) {
+                options.body = JSON.stringify(data);
+            }
+
+            const response = await fetch(`${API_URL}${endpoint}`, options);
+            const result = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(result.message || 'Something went wrong');
+            }
+            
+            return result;
+        }
+
+        async function login(e) {
+            
+            return result;
+        }
+
+        async function login(e) {
+            
+            return result;
+        }
+
+        async function login(e) {
+            e.preventDefault();
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+
+            try {
+                const result = await apiCall('/login', 'POST', { email, password });
+                token = result.token;
+                currentUser = result.user;
+                localStorage.setItem('token', token);
+                showMain();
+                loadEvents();
+                loadBookings();
+                alert('Login successful!');
+            } catch (error) {
+                alert(error.message);
+            }
+        }
+
+        async function register(e) {
+            e.preventDefault();
+            const name = document.getElementById('registerName').value;
+            const email = document.getElementById('registerEmail').value;
+            const password = document.getElementById('registerPassword').value;
+            const phone = document.getElementById('registerPhone').value;
+            const role = document.getElementById('registerRole').value;
+
+            try {
+                const result = await apiCall('/register', 'POST', {
+                    name, email, password, password_confirmation: password, phone, role
+                });
+                token = result.token;
+                currentUser = result.user;
+                localStorage.setItem('token', token);
+                showMain();
+                loadEvents();
+                loadBookings();
+                alert('Registration successful!');
+            } catch (error) {
+                alert(error.message);
+            }
+        }
+
+        function logout() {
+            if (token) {
+                apiCall('/logout', 'POST');
+            }
+            token = null;
+            currentUser = null;
+            localStorage.removeItem('token');
+            document.getElementById('authSection').classList.remove('hidden');
+            document.getElementById('mainSection').classList.add('hidden');
+            document.getElementById('logoutBtn').classList.add('hidden');
+            document.getElementById('userInfo').textContent = '';
+        }
+
+        function showMain() {
+            document.getElementById('authSection').classList.add('hidden');
+            document.getElementById('mainSection').classList.remove('hidden');
+            document.getElementById('logoutBtn').classList.remove('hidden');
+            
+            if (currentUser) {
+                document.getElementById('userInfo').textContent = `Welcome, ${currentUser.name} (${currentUser.role})`;
+                
+                const createEventTab = document.getElementById('createEventTab');
+                if (currentUser.role === 'organizer' || currentUser.role === 'admin') {
+                    createEventTab.classList.remove('hidden');
+                } else {
+                    createEventTab.classList.add('hidden');
+                }
+            }
+        }
+
+        async function loadEvents() {
+            try {
+                const result = await apiCall('/events');
+                displayEvents(result.data || result);
+            } catch (error) {
+                console.error(error);
+            }
+        }
+
+        function displayEvents(events) {
+            const container = document.getElementById('eventsList');
+            
+            if (events.length === 0) {
+                container.innerHTML = '<div class="col-12 text-center"><p class="text-muted">No events found</p></div>';
+                return;
+            }
+
+            container.innerHTML = events.map(event => `
+                <div class="col-md-6 col-lg-4 mb-4">
+                    <div class="card event-card h-100">
+                        <div class="card-body">
+                            <h5 class="card-title">${event.title}</h5>
+                            <p class="event-location mb-1">
+                                <i class="fas fa-map-marker-alt me-1"></i>${event.location}
+                            </p>
+                            <p class="event-date mb-2">
+                                <i class="fas fa-calendar me-1"></i>${new Date(event.date).toLocaleDateString()}
+                            </p>
+                            <p class="card-text text-muted">${event.description || 'No description'}</p>
+                            
+                            ${event.tickets && event.tickets.length > 0 ? `
+                                <div class="mt-3">
+                                    <h6 class="mb-2">Available Tickets:</h6>
+                                    ${event.tickets.map(ticket => `
+                                        <div class="d-flex justify-content-between align-items-center mb-2 p-2 bg-light rounded">
+                                            <div>
+                                                <span class="badge ${ticket.type === 'VIP' ? 'badge-vip' : 'badge-standard'}">${ticket.type}</span>
+                                                <span class="ms-2">$${ticket.price}</span>
+                                            </div>
+                                            <button class="btn btn-sm btn-primary" onclick="openBookingModal(${ticket.id}, '${ticket.type}', ${ticket.price}, ${ticket.quantity})">
+                                                <i class="fas fa-shopping-cart me-1"></i>Book
+                                            </button>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            ` : '<p class="text-muted">No tickets available</p>'}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function openBookingModal(ticketId, type, price, available) {
+            document.getElementById('bookingTicketId').value = ticketId;
+            document.getElementById('ticketDetails').innerHTML = `
+                <p><strong>Ticket Type:</strong> ${type}</p>
+                <p><strong>Price:</strong> $${price}</p>
+                <p><strong>Available:</strong> ${available}</p>
+            `;
+            document.getElementById('bookingQuantity').max = available;
+            
+            const modal = new bootstrap.Modal(document.getElementById('bookingModal'));
+            modal.show();
+        }
+
+        async function bookTicket(e) {
+            e.preventDefault();
+            const ticketId = document.getElementById('bookingTicketId').value;
+            const quantity = document.getElementById('bookingQuantity').value;
+
+            try {
+                const result = await apiCall(`/tickets/${ticketId}/bookings`, 'POST', { quantity: parseInt(quantity) });
+                alert('Booking created! Proceed to payment.');
+                
+                const modal = bootstrap.Modal.getInstance(document.getElementById('bookingModal'));
+                modal.hide();
+                
+                document.getElementById('paymentBookingId').value = result.booking.id;
+                document.getElementById('paymentAmount').textContent = `$${(result.booking.ticket.price * result.booking.quantity).toFixed(2)}`;
+                
+                const paymentModal = new bootstrap.Modal(document.getElementById('paymentModal'));
+                paymentModal.show();
+            } catch (error) {
+                alert(error.message);
+            }
+        }
+
+        async function processPayment() {
+            const bookingId = document.getElementById('paymentBookingId').value;
+            
+            try {
+                await apiCall(`/bookings/${bookingId}/payment`, 'POST');
+                alert('Payment successful!');
+                
+                const modal = bootstrap.Modal.getInstance(document.getElementById('paymentModal'));
+                modal.hide();
+                
+                loadBookings();
+            } catch (error) {
+                alert(error.message);
+            }
+        }
+
+        async function loadBookings() {
+            try {
+                const result = await apiCall('/bookings');
+                displayBookings(result.data || result);
+            } catch (error) {
+                console.error(error);
+            }
+        }
+
+        function displayBookings(bookings) {
+            const container = document.getElementById('bookingsList');
+            
+            if (bookings.length === 0) {
+                container.innerHTML = '<div class="col-12 text-center"><p class="text-muted">No bookings yet</p></div>';
+                return;
+            }
+
+            container.innerHTML = bookings.map(booking => `
+                <div class="col-md-6 col-lg-4 mb-4">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                <h5 class="card-title">${booking.ticket?.event?.title || 'Event'}</h5>
+                                <span class="badge status-${booking.status}">${booking.status}</span>
+                            </div>
+                            <p class="mb-1"><strong>Ticket:</strong> ${booking.ticket?.type}</p>
+                            <p class="mb-1"><strong>Quantity:</strong> ${booking.quantity}</p>
+                            <p class="mb-3"><strong>Total:</strong> $${booking.ticket?.price * booking.quantity}</p>
+                            
+                            ${booking.status === 'pending' ? `
+                                <button class="btn btn-primary btn-sm w-100 mb-2" onclick="payBooking(${booking.id}, ${booking.ticket?.price * booking.quantity})">
+                                    <i class="fas fa-credit-card me-1"></i>Pay Now
+                                </button>
+                            ` : ''}
+                            
+                            ${booking.status !== 'cancelled' ? `
+                                <button class="btn btn-outline-danger btn-sm w-100" onclick="cancelBooking(${booking.id})">
+                                    <i class="fas fa-times me-1"></i>Cancel
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function payBooking(bookingId, amount) {
+            document.getElementById('paymentBookingId').value = bookingId;
+            document.getElementById('paymentAmount').textContent = `$${amount.toFixed(2)}`;
+            
+            const modal = new bootstrap.Modal(document.getElementById('paymentModal'));
+            modal.show();
+        }
+
+        async function cancelBooking(bookingId) {
+            if (!confirm('Are you sure you want to cancel this booking?')) return;
+            
+            try {
+                await apiCall(`/bookings/${bookingId}/cancel`, 'PUT');
+                alert('Booking cancelled!');
+                loadBookings();
+            } catch (error) {
+                alert(error.message);
+            }
+        }
+
+        async function createEvent(e) {
+            e.preventDefault();
+            const title = document.getElementById('eventTitle').value;
+            const description = document.getElementById('eventDescription').value;
+            const date = document.getElementById('eventDate').value;
+            const location = document.getElementById('eventLocation').value;
+
+            try {
+                const result = await apiCall('/events', 'POST', { title, description, date, location });
+                alert('Event created successfully!');
+                
+                e.target.reset();
+                loadEvents();
+                
+                document.getElementById('eventsTab').click();
+            } catch (error) {
+                alert(error.message);
+            }
+        }
+
+        async function searchEvents() {
+            const search = document.getElementById('searchEvents').value;
+            try {
+                const url = search ? `/events?search=${search}` : '/events';
+                const result = await apiCall(url);
+                displayEvents(result.data || result);
+            } catch (error) {
+                console.error(error);
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>
