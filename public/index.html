@@ -310,19 +310,24 @@
                             <input type="text" class="form-control" id="eventLocation" required>
                         </div>
                         <hr>
-                        <h5 class="mb-3">Add Tickets (Optional)</h5>
-                        <div class="row">
-                            <div class="col-md-4 mb-2">
-                                <input type="text" class="form-control" id="ticketType" placeholder="Type (e.g. VIP, Standard)">
-                            </div>
-                            <div class="col-md-4 mb-2">
-                                <input type="number" class="form-control" id="ticketPrice" placeholder="Price" step="0.01">
-                            </div>
-                            <div class="col-md-4 mb-2">
-                                <input type="number" class="form-control" id="ticketQuantity" placeholder="Quantity">
+                        <h5 class="mb-3">Add Tickets</h5>
+                        <div id="ticketContainer">
+                            <div class="row ticket-row mb-2">
+                                <div class="col-md-3">
+                                    <input type="text" class="form-control ticket-type" placeholder="Type (e.g. VIP, Standard)">
+                                </div>
+                                <div class="col-md-3">
+                                    <input type="number" class="form-control ticket-price" placeholder="Price" step="0.01">
+                                </div>
+                                <div class="col-md-3">
+                                    <input type="number" class="form-control ticket-quantity" placeholder="Quantity">
+                                </div>
+                                <div class="col-md-3">
+                                    <button type="button" class="btn btn-success" onclick="addTicketRow()"><i class="fas fa-plus"></i></button>
+                                </div>
                             </div>
                         </div>
-                        <button type="button" class="btn btn-primary" onclick="submitEvent()">Create Event</button>
+                        <button type="button" class="btn btn-primary mt-3" onclick="submitEvent()">Create Event</button>
                     </div>
                 </div>
             </div>
@@ -702,16 +707,48 @@
             }
         }
 
+        function addTicketRow() {
+            const container = document.getElementById('ticketContainer');
+            const row = document.createElement('div');
+            row.className = 'row ticket-row mb-2';
+            row.innerHTML = `
+                <div class="col-md-3">
+                    <input type="text" class="form-control ticket-type" placeholder="Type (e.g. VIP, Standard)">
+                </div>
+                <div class="col-md-3">
+                    <input type="number" class="form-control ticket-price" placeholder="Price" step="0.01">
+                </div>
+                <div class="col-md-3">
+                    <input type="number" class="form-control ticket-quantity" placeholder="Quantity">
+                </div>
+                <div class="col-md-3">
+                    <button type="button" class="btn btn-danger" onclick="this.closest('.ticket-row').remove()"><i class="fas fa-minus"></i></button>
+                </div>
+            `;
+            container.appendChild(row);
+        }
+
         async function submitEvent() {
             const title = document.getElementById('eventTitle').value;
             const description = document.getElementById('eventDescription').value;
             const dateInput = document.getElementById('eventDate').value;
             const location = document.getElementById('eventLocation').value;
             
-            // Get ticket details
-            const ticketType = document.getElementById('ticketType').value;
-            const ticketPrice = document.getElementById('ticketPrice').value;
-            const ticketQuantity = document.getElementById('ticketQuantity').value;
+            // Get all ticket details from dynamic rows
+            const ticketRows = document.querySelectorAll('.ticket-row');
+            const tickets = [];
+            ticketRows.forEach(row => {
+                const type = row.querySelector('.ticket-type').value;
+                const price = row.querySelector('.ticket-price').value;
+                const quantity = row.querySelector('.ticket-quantity').value;
+                if (type && price && quantity) {
+                    tickets.push({
+                        type: type,
+                        price: parseFloat(price),
+                        quantity: parseInt(quantity)
+                    });
+                }
+            });
             
             // Convert datetime-local format to Laravel format
             let date = null;
@@ -724,23 +761,21 @@
                        String(d.getMinutes()).padStart(2, '0') + ':00';
             }
 
-            console.log('Sending event data:', { title, description, date, location });
+            console.log('Sending event data:', { title, description, date, location, tickets });
 
             try {
                 const result = await apiCall('/events', 'POST', { title, description, date, location });
                 console.log('Event created successfully:', result);
                 
-                // If ticket details provided, create ticket
-                if (ticketType && ticketPrice && ticketQuantity) {
-                    await apiCall(`/events/${result.event.id}/tickets`, 'POST', {
-                        type: ticketType,
-                        price: parseFloat(ticketPrice),
-                        quantity: parseInt(ticketQuantity)
-                    });
-                    console.log('Ticket created successfully');
-                    alert('Event and Ticket created successfully!');
+                // Create tickets if provided
+                if (tickets.length > 0) {
+                    for (const ticket of tickets) {
+                        await apiCall(`/events/${result.event.id}/tickets`, 'POST', ticket);
+                        console.log('Ticket created:', ticket.type);
+                    }
+                    alert(`Event created with ${tickets.length} ticket type(s)!`);
                 } else {
-                    alert('Event created successfully! (No tickets created - fill ticket details to add tickets)');
+                    alert('Event created successfully! (No tickets - add ticket details to create tickets)');
                 }
                 
                 // Clear form
@@ -748,9 +783,25 @@
                 document.getElementById('eventDescription').value = '';
                 document.getElementById('eventDate').value = '';
                 document.getElementById('eventLocation').value = '';
-                document.getElementById('ticketType').value = '';
-                document.getElementById('ticketPrice').value = '';
-                document.getElementById('ticketQuantity').value = '';
+                
+                // Clear ticket rows and keep one empty row
+                const ticketContainer = document.getElementById('ticketContainer');
+                ticketContainer.innerHTML = `
+                    <div class="row ticket-row mb-2">
+                        <div class="col-md-3">
+                            <input type="text" class="form-control ticket-type" placeholder="Type (e.g. VIP, Standard)">
+                        </div>
+                        <div class="col-md-3">
+                            <input type="number" class="form-control ticket-price" placeholder="Price" step="0.01">
+                        </div>
+                        <div class="col-md-3">
+                            <input type="number" class="form-control ticket-quantity" placeholder="Quantity">
+                        </div>
+                        <div class="col-md-3">
+                            <button type="button" class="btn btn-success" onclick="addTicketRow()"><i class="fas fa-plus"></i></button>
+                        </div>
+                    </div>
+                `;
                 
                 // Reload events
                 loadEvents();
