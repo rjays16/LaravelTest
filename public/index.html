@@ -293,25 +293,36 @@
                 <div class="card">
                     <div class="card-body">
                         <h4 class="mb-4"><i class="fas fa-plus-square me-2"></i>Create New Event</h4>
-                        <form onsubmit="createEvent(event)">
-                            <div class="mb-3">
-                                <label class="form-label">Event Title</label>
-                                <input type="text" class="form-control" id="eventTitle" required>
+                        <div class="mb-3">
+                            <label class="form-label">Event Title</label>
+                            <input type="text" class="form-control" id="eventTitle" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Description</label>
+                            <textarea class="form-control" id="eventDescription" rows="2"></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Date</label>
+                            <input type="datetime-local" class="form-control" id="eventDate" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Location</label>
+                            <input type="text" class="form-control" id="eventLocation" required>
+                        </div>
+                        <hr>
+                        <h5 class="mb-3">Add Tickets (Optional)</h5>
+                        <div class="row">
+                            <div class="col-md-4 mb-2">
+                                <input type="text" class="form-control" id="ticketType" placeholder="Type (e.g. VIP, Standard)">
                             </div>
-                            <div class="mb-3">
-                                <label class="form-label">Description</label>
-                                <textarea class="form-control" id="eventDescription" rows="3"></textarea>
+                            <div class="col-md-4 mb-2">
+                                <input type="number" class="form-control" id="ticketPrice" placeholder="Price" step="0.01">
                             </div>
-                            <div class="mb-3">
-                                <label class="form-label">Date</label>
-                                <input type="datetime-local" class="form-control" id="eventDate" required>
+                            <div class="col-md-4 mb-2">
+                                <input type="number" class="form-control" id="ticketQuantity" placeholder="Quantity">
                             </div>
-                            <div class="mb-3">
-                                <label class="form-label">Location</label>
-                                <input type="text" class="form-control" id="eventLocation" required>
-                            </div>
-                            <button type="submit" class="btn btn-primary">Create Event</button>
-                        </form>
+                        </div>
+                        <button type="button" class="btn btn-primary" onclick="submitEvent()">Create Event</button>
                     </div>
                 </div>
             </div>
@@ -370,15 +381,21 @@
         let csrfToken = null;
 
         async function getCsrfToken() {
+            if (csrfToken) return; // Already have token
+            
             try {
-                await fetch(`${SANCTUM_URL}/sanctum/csrf-cookie`, {
+                const response = await fetch(`${SANCTUM_URL}/sanctum/csrf-cookie`, {
                     credentials: 'include'
                 });
-                const cookies = document.cookie.split(';');
-                for (let cookie of cookies) {
-                    if (cookie.trim().startsWith('XSRF-TOKEN=')) {
-                        csrfToken = decodeURIComponent(cookie.trim().substring('XSRF-TOKEN='.length));
-                        break;
+                
+                if (response.ok) {
+                    const cookies = document.cookie.split(';');
+                    for (let cookie of cookies) {
+                        if (cookie.trim().startsWith('XSRF-TOKEN=')) {
+                            csrfToken = decodeURIComponent(cookie.trim().substring('XSRF-TOKEN='.length));
+                            console.log('CSRF Token obtained:', csrfToken);
+                            break;
+                        }
                     }
                 }
             } catch (e) {
@@ -387,15 +404,21 @@
         }
 
         function init() {
-            if (token) {
-                showMain();
-                loadEvents();
-                loadBookings();
-            }
+            // Get CSRF token first before making any API calls
+            getCsrfToken().then(() => {
+                if (token) {
+                    showMain();
+                    loadEvents();
+                    loadBookings();
+                }
+            });
         }
 
         async function apiCall(endpoint, method = 'GET', data = null) {
-            await getCsrfToken();
+            // Only get CSRF token for write operations
+            if (method !== 'GET') {
+                await getCsrfToken();
+            }
             
             const headers = {
                 'Content-Type': 'application/json',
@@ -605,7 +628,9 @@
                 const modal = bootstrap.Modal.getInstance(document.getElementById('paymentModal'));
                 modal.hide();
                 
+                // Reload bookings and switch to bookings tab
                 loadBookings();
+                document.getElementById('bookingsTab').click();
             } catch (error) {
                 alert(error.message);
             }
@@ -677,27 +702,67 @@
             }
         }
 
-        async function createEvent(e) {
-            e.preventDefault();
+        async function submitEvent() {
             const title = document.getElementById('eventTitle').value;
             const description = document.getElementById('eventDescription').value;
             const dateInput = document.getElementById('eventDate').value;
             const location = document.getElementById('eventLocation').value;
             
+            // Get ticket details
+            const ticketType = document.getElementById('ticketType').value;
+            const ticketPrice = document.getElementById('ticketPrice').value;
+            const ticketQuantity = document.getElementById('ticketQuantity').value;
+            
             // Convert datetime-local format to Laravel format
-            const date = dateInput ? new Date(dateInput).toISOString().slice(0, 19).replace('T', ' ') : null;
+            let date = null;
+            if (dateInput) {
+                const d = new Date(dateInput);
+                date = d.getFullYear() + '-' + 
+                       String(d.getMonth() + 1).padStart(2, '0') + '-' + 
+                       String(d.getDate()).padStart(2, '0') + ' ' + 
+                       String(d.getHours()).padStart(2, '0') + ':' + 
+                       String(d.getMinutes()).padStart(2, '0') + ':00';
+            }
+
+            console.log('Sending event data:', { title, description, date, location });
 
             try {
                 const result = await apiCall('/events', 'POST', { title, description, date, location });
-                alert('Event created successfully!');
+                console.log('Event created successfully:', result);
                 
-                e.target.reset();
+                // If ticket details provided, create ticket
+                if (ticketType && ticketPrice && ticketQuantity) {
+                    await apiCall(`/events/${result.event.id}/tickets`, 'POST', {
+                        type: ticketType,
+                        price: parseFloat(ticketPrice),
+                        quantity: parseInt(ticketQuantity)
+                    });
+                    console.log('Ticket created successfully');
+                    alert('Event and Ticket created successfully!');
+                } else {
+                    alert('Event created successfully! (No tickets created - fill ticket details to add tickets)');
+                }
+                
+                // Clear form
+                document.getElementById('eventTitle').value = '';
+                document.getElementById('eventDescription').value = '';
+                document.getElementById('eventDate').value = '';
+                document.getElementById('eventLocation').value = '';
+                document.getElementById('ticketType').value = '';
+                document.getElementById('ticketPrice').value = '';
+                document.getElementById('ticketQuantity').value = '';
+                
+                // Reload events
                 loadEvents();
                 
+                // Switch to events tab
                 document.getElementById('eventsTab').click();
             } catch (error) {
-                alert(error.message);
+                console.error('Error creating event:', error);
+                alert('Error: ' + error.message);
             }
+            
+            return false;
         }
 
         async function searchEvents() {
